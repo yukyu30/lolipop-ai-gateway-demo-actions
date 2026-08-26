@@ -19,13 +19,15 @@ jobs:
       - name: Send a dummy email through Lolipop AI Gateway
         id: claude
         uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.AI_GATEWAY_API_KEY }}
         with:
           anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
           prompt: |
             次の値を、変更や説明を加えずJSONのvalueとして返してください。
             dummy-mask-test@example.com
           claude_args: >-
-            --model claude-sonnet-4-6
+            --model anthropic/claude-haiku-4-5
             --max-turns 1
             --json-schema '{"type":"object","properties":{"value":{"type":"string"}},"required":["value"],"additionalProperties":false}'
 
