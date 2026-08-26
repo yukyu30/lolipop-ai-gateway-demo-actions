@@ -14,6 +14,8 @@ Pull Requestを作成すると、Claude Code Actionによるコードレビュ�
 
 ガードレールの動作確認には、ダミーのメールアドレス `ugo@example.com` を使用します。
 
+レビューworkflowは、Claude Code Action公式のcomprehensive PR review例をもとに、Haikuモデルで軽量に実行します。
+
 ## 検証メモ
 
 - [Claude Code Action × Lolipop AI Gateway: tool利用検証メモ](docs/claude-code-action-tool-use.md)
