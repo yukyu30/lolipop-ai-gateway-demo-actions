@@ -6,6 +6,8 @@
 
 Lolipop AI Gatewayは、Claude Code Actionから利用できる。通常の1ターン応答に加え、`tool_use`から`tool_result`を返す複数ターンも、Claude Codeのthinkingを無効化すれば完走する。
 
+公式`code-review`プラグインもthinking無効化後は12ターンまで進行した。検証runは最終的にHTTP 402 `Insufficient balance`で終了したためレビュー完走までは確認できていないが、最新の停止原因はcontent blockの非互換ではなくAIゲートウェイ側の残高不足である。
+
 デフォルト設定のClaude Codeはthinking blockを生成する。tool実行後の次のMessages APIリクエストで、直前の`thinking`と`tool_use`、新しい`tool_result`を会話履歴として再送すると、2026-08-27時点のAIゲートウェイはHTTP 400 `Unsupported Anthropic content block`を返す。
 
 比較実験では、thinkingを含めなければ同じ`tool_use`／`tool_result`往復がHTTP 200で成功した。したがって、未対応なのは`tool_result`ではなく、tool利用時に再送されるAnthropic `thinking` content blockと判断できる。
@@ -32,6 +34,7 @@ Lolipop AI Gatewayは、Claude Code Actionから利用できる。通常の1タ�
 | 直接HTTP、thinkingあり | 1ターン目200、2ターン目400 | [run 32995799540](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32995799540) |
 | Claude Code Action、thinking無効、Bash tool往復 | `num_turns: 2`、`result: "TOOL_DONE"` | [run 32995941818](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32995941818) |
 | 実際の`code-review`プラグイン、デフォルトthinking | `num_turns: 2`、`is_error: true` | [run 32991302884](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32991302884) |
+| 実際の`code-review`プラグイン、thinking無効 | 12ターン進行後、HTTP 402残高不足で終了 | [run 32996846956](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32996846956) |
 
 ## 対照実験の詳細
 
@@ -159,6 +162,18 @@ steps:
 
 `CLAUDE_CODE_DISABLE_THINKING=1`はthinkingを強制的に無効化するClaude Code公式の環境変数である。`MAX_THINKING_TOKENS=0`もthinkingを無効化する設定として併記している。
 
+### `code-review`プラグインの実行結果
+
+[run 32996846956](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32996846956)では、上記設定で公式`code-review`プラグインを実行した。Actionは`anthropic/claude-sonnet-4-6`を使用して12ターン進行し、モデル利用料金も記録された。
+
+```text
+"num_turns": 12
+"total_cost_usd": 0.34307594999999996
+"result": "API Error: 402 Insufficient balance"
+```
+
+このrunではHTTP 400 `Unsupported Anthropic content block`は発生していない。したがってthinking無効化の回避策は実際のプラグインでも有効と判断できる。ただし残高不足で停止したため、レビュー投稿までのend-to-end完走は未確認である。AIゲートウェイへ残高を追加した後、同じworkflowを再実行して最終確認する必要がある。
+
 ## AIゲートウェイ側で対応が望まれる内容
 
 回避設定なしでClaude Codeを使うには、tool利用後のMessages APIリクエストで、直前のassistant messageに含まれる署名付き`thinking` content blockを受理し、Anthropic APIへ透過または適切に変換する必要がある。
@@ -170,4 +185,3 @@ steps:
 - [Lolipop AI Gateway: Anthropic SDK](https://ai-gateway.lolipop.jp/docs/guides/sdks/anthropic-sdk)
 - [Claude Code: Environment variables](https://code.claude.com/docs/en/env-vars)
 - [Anthropic: Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls)
-
