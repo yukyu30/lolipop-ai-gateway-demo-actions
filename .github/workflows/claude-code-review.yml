@@ -53,3 +53,28 @@ jobs:
           claude_args: "--model anthropic/claude-sonnet-4-6"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
+
+      - name: Print sanitized Claude error result
+        if: failure()
+        shell: bash
+        run: |
+          output_file="${RUNNER_TEMP}/claude-execution-output.json"
+
+          if [[ ! -f "$output_file" ]]; then
+            echo "Claude execution output file was not found"
+            exit 0
+          fi
+
+          jq --compact-output '
+            if type == "array" then .[] else . end
+            | select(type == "object" and .type == "result" and .is_error == true)
+            | {
+                subtype,
+                is_error,
+                num_turns,
+                result: ((.result // "") | tostring | .[0:2000])
+              }
+          ' "$output_file" \
+            | sed -E \
+                -e 's/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/[REDACTED_EMAIL]/g' \
+                -e 's/(sk-|key-)[[:alnum:]_-]{12,}/[REDACTED_KEY]/g'
