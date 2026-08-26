@@ -22,18 +22,25 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
           prompt: |
-            次の値を、変更や説明を加えずJSONのvalueとして返してください。
+            次の値を、変更や説明を加えず1行だけで返してください。
             dummy-mask-test@example.com
           claude_args: >-
             --model anthropic/claude-haiku-4-5
             --max-turns 1
-            --json-schema '{"type":"object","properties":{"value":{"type":"string"}},"required":["value"],"additionalProperties":false}'
+            --disallowedTools "*"
 
       - name: Verify the masked value
         env:
-          RESULT: ${{ steps.claude.outputs.structured_output }}
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
-          value="$(jq -r '.value // empty' <<< "$RESULT")"
+          value="$(jq -r '
+            [.[] |
+              select(.type == "assistant") |
+              .message.content[]? |
+              select(.type == "text") |
+              .text
+            ] | last // empty
+          ' "$EXECUTION_FILE")"
 
           if [[ "$value" != "[PII]" ]]; then
             echo "::error::PII masking was not detected"
