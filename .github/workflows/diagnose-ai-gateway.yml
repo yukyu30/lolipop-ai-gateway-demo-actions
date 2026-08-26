@@ -95,3 +95,17 @@ jobs:
           show_full_output: true
           prompt: 'Reply with exactly OK.'
           claude_args: '--model anthropic/claude-haiku-4-5 --max-turns 1'
+
+      - name: Verify a Claude Code tool round trip
+        if: always()
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
+          show_full_output: true
+          prompt: |
+            Use the Bash tool exactly once to run: printf TOOL_OK
+            After reading the tool result, reply with exactly TOOL_DONE.
+          claude_args: >-
+            --model anthropic/claude-haiku-4-5
+            --max-turns 3
+            --allowedTools "Bash(printf TOOL_OK)"
