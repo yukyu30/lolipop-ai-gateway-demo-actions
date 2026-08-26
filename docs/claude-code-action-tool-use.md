@@ -35,6 +35,7 @@ Lolipop AI Gatewayは、Claude Code Actionから利用できる。通常の1タ�
 | Claude Code Action、thinking無効、Bash tool往復 | `num_turns: 2`、`result: "TOOL_DONE"` | [run 32995941818](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32995941818) |
 | 実際の`code-review`プラグイン、デフォルトthinking | `num_turns: 2`、`is_error: true` | [run 32991302884](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32991302884) |
 | 実際の`code-review`プラグイン、thinking無効 | 12ターン進行後、HTTP 402残高不足で終了 | [run 32996846956](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32996846956) |
+| `code-review`、最大出力4,096・並列数2 | 29ターン、`$1.81849155`利用後にHTTP 402 | [run 32997551686](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32997551686) |
 
 ## 対照実験の詳細
 
@@ -187,6 +188,16 @@ AIゲートウェイの[リクエストの上限](https://ai-gateway.lolipop.jp/
 }
 ```
 
+[run 32997551686](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32997551686)でこの設定を検証したところ、前回の12ターンから29ターンまで進行したが、レビュー完了前に再び402になった。
+
+```text
+"num_turns": 29
+"total_cost_usd": 1.81849155
+"result": "API Error: 402 Insufficient balance"
+```
+
+公式`code-review`プラグインは複数の専門subagentを使うため、小規模なデモでも通常の1ターン実行より大幅に高コストになる。約493円の表示残高がある状態でも、実利用額の累積と次リクエストの予約額により完走できなかった。低残高で疎通だけを確認する場合は、前述の制限付きBash tool検証を使う。公式プラグインのend-to-end完走を確認する場合は、十分なクレジットを用意するか、より安価なレビュー構成を別途設計する。
+
 ## AIゲートウェイ側で対応が望まれる内容
 
 回避設定なしでClaude Codeを使うには、tool利用後のMessages APIリクエストで、直前のassistant messageに含まれる署名付き`thinking` content blockを受理し、Anthropic APIへ透過または適切に変換する必要がある。
@@ -198,3 +209,4 @@ AIゲートウェイの[リクエストの上限](https://ai-gateway.lolipop.jp/
 - [Lolipop AI Gateway: Anthropic SDK](https://ai-gateway.lolipop.jp/docs/guides/sdks/anthropic-sdk)
 - [Claude Code: Environment variables](https://code.claude.com/docs/en/env-vars)
 - [Anthropic: Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls)
+- [Claude Code: Code Review Plugin](https://github.com/anthropics/claude-code/tree/main/plugins/code-review)
