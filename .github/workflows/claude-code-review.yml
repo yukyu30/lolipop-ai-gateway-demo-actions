@@ -23,17 +23,16 @@ jobs:
       ANTHROPIC_BASE_URL: https://ai-gateway.lolipop.jp/anthropic
     permissions:
       contents: read
-      pull-requests: read
-      issues: read
+      pull-requests: write
       id-token: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
-      - name: Run Claude Code Review
+      - name: Run comprehensive PR review
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
@@ -45,14 +44,32 @@ jobs:
               "env": {
                 "CLAUDE_CODE_DISABLE_THINKING": "1",
                 "MAX_THINKING_TOKENS": "0",
-                "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "4096",
-                "CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY": "2"
+                "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "2048"
               }
             }
-          plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
-          plugins: "code-review@claude-code-plugins"
-          prompt: "/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
-          claude_args: "--model anthropic/claude-sonnet-4-6"
+          track_progress: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Use the allowed `gh pr view` and `gh pr diff` Bash tools to inspect
+            this pull request before reviewing it.
+
+            Perform a concise but comprehensive code review covering:
+
+            1. Code quality and definite bugs
+            2. Security vulnerabilities
+            3. Performance problems
+            4. Missing or inadequate tests
+            5. Documentation accuracy
+
+            Report only high-confidence, actionable findings. Provide inline
+            comments for specific issues and a top-level summary. If there are
+            no findings, post a short top-level approval summary.
+          claude_args: >-
+            --model anthropic/claude-haiku-4-5
+            --max-turns 6
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
