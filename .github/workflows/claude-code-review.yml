@@ -73,26 +73,43 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
-      - name: Print sanitized Claude error result
-        if: failure()
+      - name: Print sanitized Claude execution evidence
+        if: always()
         shell: bash
+        env:
+          EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
         run: |
-          output_file="${RUNNER_TEMP}/claude-execution-output.json"
+          output_file="$EXECUTION_FILE"
 
-          if [[ ! -f "$output_file" ]]; then
+          if [[ -z "$output_file" || ! -f "$output_file" ]]; then
             echo "Claude execution output file was not found"
             exit 0
           fi
 
           jq --compact-output '
-            if type == "array" then .[] else . end
-            | select(type == "object" and .type == "result" and .is_error == true)
-            | {
-                subtype,
-                is_error,
-                num_turns,
-                result: ((.result // "") | tostring | .[0:2000])
-              }
+            [
+              .[]
+              | select(.type == "assistant")
+              | .message.content[]?
+              | select(.type == "tool_use")
+              | {
+                  name,
+                  command: ((.input.command // "") | tostring | .[0:500])
+                }
+            ] as $tool_uses
+            | ([
+                .[]
+                | select(.type == "result")
+                | {
+                    subtype,
+                    is_error,
+                    num_turns,
+                    total_cost_usd,
+                    permission_denials_count,
+                    result: ((.result // "") | tostring | .[0:500])
+                  }
+              ] | last) as $result
+            | {tool_uses: $tool_uses, result: $result}
           ' "$output_file" \
             | sed -E \
                 -e 's/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/[REDACTED_EMAIL]/g' \
