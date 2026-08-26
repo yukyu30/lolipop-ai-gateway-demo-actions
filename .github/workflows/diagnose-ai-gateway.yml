@@ -1,0 +1,22 @@
+name: Diagnose AI Gateway
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ANTHROPIC_BASE_URL: https://ai-gateway.lolipop.jp/anthropic
+
+    steps:
+      - name: Call Lolipop AI Gateway with Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
+          show_full_output: true
+          prompt: 'Reply with exactly OK.'
+          claude_args: '--model anthropic/claude-haiku-4-5 --max-turns 1'
