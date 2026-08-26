@@ -1,0 +1,97 @@
+name: Diagnose AI Gateway
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ANTHROPIC_BASE_URL: https://ai-gateway.lolipop.jp/anthropic
+
+    steps:
+      - name: Validate the secret format
+        env:
+          API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+        run: |
+          if [[ -z "$API_KEY" ]]; then
+            echo "::error::AI_GATEWAY_API_KEY is empty"
+            exit 1
+          fi
+
+          if [[ "$API_KEY" == *$'\n'* || "$API_KEY" == *$'\r'* ]]; then
+            echo "::error::AI_GATEWAY_API_KEY contains a newline"
+            exit 1
+          fi
+
+          if [[ "$API_KEY" =~ ^[[:space:]] || "$API_KEY" =~ [[:space:]]$ ]]; then
+            echo "::error::AI_GATEWAY_API_KEY has leading or trailing whitespace"
+            exit 1
+          fi
+
+          echo "AI_GATEWAY_API_KEY format check passed"
+
+      - name: Send a control request with an invalid key
+        if: always()
+        run: |
+          response_file="${RUNNER_TEMP}/invalid-key-response.json"
+          http_code="$(curl --http1.1 --silent --show-error \
+            --output "$response_file" \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header 'x-api-key: deliberately-invalid-key' \
+            --header 'anthropic-version: 2023-06-01' \
+            --header 'content-type: application/json' \
+            --data '{"model":"anthropic/claude-haiku-4-5","max_tokens":32,"messages":[{"role":"user","content":"Reply with exactly OK."}]}' \
+            "${ANTHROPIC_BASE_URL}/v1/messages")"
+
+          echo "Invalid-key control HTTP status: $http_code"
+          jq --compact-output \
+            '{type, error_type: .error.type, error_message: .error.message}' \
+            "$response_file"
+
+          if [[ "$http_code" != "401" ]]; then
+            exit 1
+          fi
+
+      - name: Call the minimal Anthropic Messages API
+        if: always()
+        env:
+          API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+        run: |
+          response_file="${RUNNER_TEMP}/gateway-response.json"
+          http_code="$(curl --http1.1 --silent --show-error \
+            --output "$response_file" \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "x-api-key: ${API_KEY}" \
+            --header 'anthropic-version: 2023-06-01' \
+            --header 'content-type: application/json' \
+            --data '{"model":"anthropic/claude-haiku-4-5","max_tokens":32,"messages":[{"role":"user","content":"Reply with exactly OK."}]}' \
+            "${ANTHROPIC_BASE_URL}/v1/messages")"
+
+          echo "Minimal API HTTP status: $http_code"
+
+          if jq --exit-status . "$response_file" >/dev/null 2>&1; then
+            jq --compact-output \
+              '{type, error_type: .error.type, error_message: .error.message, text: ([.content[]? | select(.type == "text") | .text] | join(""))}' \
+              "$response_file"
+          else
+            echo "Minimal API returned a non-JSON response"
+          fi
+
+          if [[ "$http_code" != "200" ]]; then
+            exit 1
+          fi
+
+      - name: Call Lolipop AI Gateway with Claude Code
+        if: always()
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
+          show_full_output: true
+          prompt: 'Reply with exactly OK.'
+          claude_args: '--model anthropic/claude-haiku-4-5 --max-turns 1'
