@@ -36,8 +36,6 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
-        env:
-          ANTHROPIC_AUTH_TOKEN: ${{ secrets.AI_GATEWAY_API_KEY }}
         with:
           anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
