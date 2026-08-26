@@ -22,7 +22,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
           prompt: |
-            次の値を、変更や説明を加えず1行だけで返してください。
+            次の値を、変更や説明を加えず `PII_VALUE: ` の後に続けて1行だけで返してください。
             dummy-mask-test@example.com
           claude_args: >-
             --model anthropic/claude-haiku-4-5
@@ -33,7 +33,7 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
-          value="$(jq -r '
+          response="$(jq -r '
             [.[] |
               select(.type == "assistant") |
               .message.content[]? |
@@ -41,6 +41,7 @@ jobs:
               .text
             ] | last // empty
           ' "$EXECUTION_FILE")"
+          value="$(sed -n 's/^PII_VALUE: //p' <<< "$response" | head -n 1)"
 
           if [[ "$value" != "[PII]" ]]; then
             echo "::error::PII masking was not detected"
