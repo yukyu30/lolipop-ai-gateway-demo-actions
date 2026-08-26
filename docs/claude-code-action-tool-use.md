@@ -6,7 +6,7 @@
 
 Lolipop AI Gatewayは、Claude Code Actionから利用できる。通常の1ターン応答に加え、`tool_use`から`tool_result`を返す複数ターンも、Claude Codeのthinkingを無効化すれば完走する。
 
-公式`code-review`プラグインもthinking無効化後は12ターンまで進行した。検証runは最終的にHTTP 402 `Insufficient balance`で終了したためレビュー完走までは確認できていないが、最新の停止原因はcontent blockの非互換ではなくAIゲートウェイ側の残高不足である。
+公式`code-review`プラグインもthinking無効化後は12ターンまで進行した。検証runは最終的にHTTP 402 `Insufficient balance`で終了したためレビュー完走までは確認できていないが、最新の停止原因はcontent blockの非互換ではない。
 
 デフォルト設定のClaude Codeはthinking blockを生成する。tool実行後の次のMessages APIリクエストで、直前の`thinking`と`tool_use`、新しい`tool_result`を会話履歴として再送すると、2026-08-27時点のAIゲートウェイはHTTP 400 `Unsupported Anthropic content block`を返す。
 
@@ -151,7 +151,9 @@ steps:
         {
           "env": {
             "CLAUDE_CODE_DISABLE_THINKING": "1",
-            "MAX_THINKING_TOKENS": "0"
+            "MAX_THINKING_TOKENS": "0",
+            "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "4096",
+            "CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY": "2"
           }
         }
       plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
@@ -172,7 +174,18 @@ steps:
 "result": "API Error: 402 Insufficient balance"
 ```
 
-このrunではHTTP 400 `Unsupported Anthropic content block`は発生していない。したがってthinking無効化の回避策は実際のプラグインでも有効と判断できる。ただし残高不足で停止したため、レビュー投稿までのend-to-end完走は未確認である。AIゲートウェイへ残高を追加した後、同じworkflowを再実行して最終確認する必要がある。
+このrunではHTTP 400 `Unsupported Anthropic content block`は発生していない。したがってthinking無効化の回避策は実際のプラグインでも有効と判断できる。ただし402で停止したため、レビュー投稿までのend-to-end完走は未確認である。
+
+AIゲートウェイの[リクエストの上限](https://ai-gateway.lolipop.jp/docs/api-reference/limits)によると、クレジットは応答後の実利用量だけで判定されるのではない。リクエスト受付時に`max_tokens`を上限とする料金を予約し、応答後に実利用量で精算する。`code-review`プラグインは複数のsubagentを並列起動するため、各リクエストの予約が同時に積み上がる。
+
+失敗runではClaude Codeがモデルの最大出力を32,000 tokenとして扱っていた。画面上にクレジットが残っていても、この予約額の合計が一時的に残高を超えると402になり得る。対策として、[Claude Code公式の環境変数](https://code.claude.com/docs/en/env-vars)を使い、1リクエストの最大出力と並列数を抑えている。
+
+```json
+{
+  "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "4096",
+  "CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY": "2"
+}
+```
 
 ## AIゲートウェイ側で対応が望まれる内容
 
