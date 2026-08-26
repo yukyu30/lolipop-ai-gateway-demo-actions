@@ -294,12 +294,19 @@ jobs:
           prompt: 'Reply with exactly OK.'
           claude_args: '--model anthropic/claude-haiku-4-5 --max-turns 1'
 
-      - name: Verify a Claude Code tool round trip
+      - name: Verify a Claude Code tool round trip with thinking disabled
         if: always()
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
           show_full_output: true
+          settings: |
+            {
+              "env": {
+                "CLAUDE_CODE_DISABLE_THINKING": "1",
+                "MAX_THINKING_TOKENS": "0"
+              }
+            }
           prompt: |
             Use the Bash tool exactly once to run: printf TOOL_OK
             After reading the tool result, reply with exactly TOOL_DONE.
