@@ -18,7 +18,7 @@ jobs:
           API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
         run: |
           response_file="${RUNNER_TEMP}/gateway-response.json"
-          http_code="$(curl --silent --show-error \
+          http_code="$(curl --http1.1 --silent --show-error \
             --output "$response_file" \
             --write-out '%{http_code}' \
             --request POST \
