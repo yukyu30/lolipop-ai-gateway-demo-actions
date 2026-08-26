@@ -11,3 +11,5 @@ Claude Code Action のセットアップについては、公式ガイドを参�
 ## Claude Code Review
 
 Pull Requestを作成すると、Claude Code Actionによるコードレビューが実行されます。Claude APIへのリクエストは、ロリポップ！AI Gatewayを経由します。
+
+ガードレールの動作確認には、ダミーのメールアドレス `ugo@example.com` を使用します。
