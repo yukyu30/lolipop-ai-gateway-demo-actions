@@ -1,0 +1,50 @@
+name: Verify PII Masking
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify-pii-masking:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ANTHROPIC_BASE_URL: https://ai-gateway.lolipop.jp/anthropic
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Send a dummy email through Lolipop AI Gateway
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
+          prompt: |
+            次の値を、変更や説明を加えず1行だけで返してください。
+            dummy-mask-test@example.com
+          claude_args: >-
+            --model anthropic/claude-haiku-4-5
+            --max-turns 1
+            --disallowedTools "*"
+
+      - name: Verify the masked value
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          value="$(jq -r '
+            [.[] |
+              select(.type == "assistant") |
+              .message.content[]? |
+              select(.type == "text") |
+              .text
+            ] | last // empty
+          ' "$EXECUTION_FILE")"
+
+          if [[ "$value" != "[PII]" ]]; then
+            echo "::error::PII masking was not detected"
+            exit 1
+          fi
+
+          echo "PII masking verified: [PII]"
