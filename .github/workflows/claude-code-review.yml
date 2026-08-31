@@ -37,13 +37,11 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
-          # The gateway supports tool_use/tool_result, but currently rejects a
-          # thinking block when Claude Code replays it on the next tool turn.
+          # Keep thinking enabled so this workflow also verifies that the
+          # gateway accepts replayed thinking blocks across tool turns.
           settings: |
             {
               "env": {
-                "CLAUDE_CODE_DISABLE_THINKING": "1",
-                "MAX_THINKING_TOKENS": "0",
                 "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "2048"
               }
             }
@@ -87,7 +85,25 @@ jobs:
           fi
 
           jq --compact-output '
-            [
+            ([
+              .[]
+              | select(.type == "assistant")
+              | .message.content[]?
+              | .type
+            ] | unique) as $assistant_content_types
+            | ([
+              .[]
+              | select(.type == "assistant")
+              | .message.content[]?
+              | select(.type == "thinking")
+            ] | length) as $thinking_block_count
+            | ([
+              .[]
+              | select(.type == "user")
+              | .message.content[]?
+              | select(.type == "tool_result")
+            ] | length) as $tool_result_count
+            | [
               .[]
               | select(.type == "assistant")
               | .message.content[]?
@@ -109,7 +125,13 @@ jobs:
                     result: ((.result // "") | tostring | .[0:500])
                   }
               ] | last) as $result
-            | {tool_uses: $tool_uses, result: $result}
+            | {
+                assistant_content_types: $assistant_content_types,
+                thinking_block_count: $thinking_block_count,
+                tool_result_count: $tool_result_count,
+                tool_uses: $tool_uses,
+                result: $result
+              }
           ' "$output_file" \
             | sed -E \
                 -e 's/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/[REDACTED_EMAIL]/g' \
