@@ -16,6 +16,8 @@ Pull Requestを作成すると、Claude Code Actionによるコードレビュ�
 
 レビューworkflowは、Claude Code Action公式のcomprehensive PR review例をもとに、Haikuモデルで軽量に実行します。
 
+Claude Codeのthinkingを有効にしたまま、PR情報を取得するツール往復を実行します。
+
 ## 検証メモ
 
 - [Claude Code Action × Lolipop AI Gateway: tool利用検証メモ](docs/claude-code-action-tool-use.md)
