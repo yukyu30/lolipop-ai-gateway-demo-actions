@@ -1,18 +1,20 @@
 # Claude Code Action × Lolipop AI Gateway: tool利用検証メモ
 
-検証日: 2026-08-27（JST）
+初回検証日: 2026-08-27（JST）
+
+thinking対応の再検証日: 2026-08-31（JST）
 
 ## 結論
 
-Lolipop AI Gatewayは、Claude Code Actionから利用できる。通常の1ターン応答に加え、`tool_use`から`tool_result`を返す複数ターンも、Claude Codeのthinkingを無効化すれば完走する。
+Lolipop AI Gatewayは、Claude Code Actionから利用できる。通常の1ターン応答に加え、thinkingを有効にした`tool_use`／`tool_result`の複数ターンと、PRレビューコメントの投稿まで完走する。
 
 Claude Code Action公式の[comprehensive PR review例](https://github.com/anthropics/claude-code-action/blob/main/examples/pr-review-comprehensive.yml)をHaiku向けに軽量化したworkflowでは、Claudeが`gh pr view`と`gh pr diff`を実行し、PRへレビューコメントを投稿するところまで成功した。
 
 一方、`/install-github-app`が生成する公式`code-review`プラグインは、小規模なPRでも多数のsubagentとtoolを起動する。今回の環境では権限拒否が繰り返され、29ターン・`$1.81849155`利用後にHTTP 402で終了した。この挙動はClaude Codeの[issue #26227](https://github.com/anthropics/claude-code/issues/26227)でも報告されているため、軽量なデモでは直接プロンプト方式を採用した。
 
-デフォルト設定のClaude Codeはthinking blockを生成する。tool実行後の次のMessages APIリクエストで、直前の`thinking`と`tool_use`、新しい`tool_result`を会話履歴として再送すると、2026-08-27時点のAIゲートウェイはHTTP 400 `Unsupported Anthropic content block`を返す。
+2026-08-27の初回検証では、tool実行後のMessages APIリクエストで、直前の`thinking`と`tool_use`、新しい`tool_result`を会話履歴として再送するとHTTP 400 `Unsupported Anthropic content block`が返された。
 
-比較実験では、thinkingを含めなければ同じ`tool_use`／`tool_result`往復がHTTP 200で成功した。したがって、未対応なのは`tool_result`ではなく、tool利用時に再送されるAnthropic `thinking` content blockと判断できる。
+2026-08-31にthinking無効化設定を削除して再検証したところ、`thinking` blockを含む6ターンが成功した。初回に確認したthinking blockの非互換は、AIゲートウェイ側の修正によって解消したと判断できる。
 
 ## 検証環境
 
@@ -41,6 +43,8 @@ Claude Code Action公式の[comprehensive PR review例](https://github.com/anthr
 | Haiku comprehensive review、`max-turns: 6` | レビュー本文は生成したが、必要な7ターンに対して上限不足 | [run 32999160681](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32999160681) |
 | Haiku comprehensive review、`max-turns: 10` | `gh pr view`、`gh pr diff`を実行し、6ターンでレビュー投稿に成功 | [run 32999774810](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/32999774810) |
 | PRレビューコメント | 指摘なし、ApprovedとしてPR #20へ投稿 | [issuecomment-5429431662](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/pull/20#issuecomment-5429431662) |
+| thinking有効のHaiku comprehensive review | thinking 1件、tool result 5件、6ターンでレビュー投稿に成功 | [run 33366681419](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/33366681419) |
+| thinking有効時のPRレビューコメント | 指摘なしとしてPR #21へ投稿 | [issuecomment-5474914697](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/pull/21#issuecomment-5474914697) |
 
 ## 対照実験の詳細
 
@@ -159,8 +163,6 @@ steps:
       settings: |
         {
           "env": {
-            "CLAUDE_CODE_DISABLE_THINKING": "1",
-            "MAX_THINKING_TOKENS": "0",
             "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "2048"
           }
         }
@@ -177,11 +179,11 @@ steps:
         Report only high-confidence, actionable findings.
       claude_args: >-
         --model anthropic/claude-haiku-4-5
-        --max-turns 10
+        --max-turns 15
         --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
 ```
 
-`CLAUDE_CODE_DISABLE_THINKING=1`はthinkingを強制的に無効化するClaude Code公式の環境変数である。`MAX_THINKING_TOKENS=0`もthinkingを無効化する設定として併記している。
+現在のworkflowは`CLAUDE_CODE_DISABLE_THINKING`も`MAX_THINKING_TOKENS`も設定せず、Claude Codeのthinkingを有効にしている。`--max-turns 15`は、thinking有効時に最初の試行が12ターンとなり、従来の上限10を超えたため余裕を持たせた値である。
 
 ### 公式`code-review`プラグインで完走しなかった理由
 
@@ -249,11 +251,42 @@ Claudeは取得したPR情報と差分をレビューし、[PR #20のコメン�
 4. Claude Code ActionがGitHubのPRへレビューコメントを投稿する
 5. GitHub Actions jobが成功終了する
 
-## AIゲートウェイ側で対応が望まれる内容
+### thinking有効での再検証結果
 
-回避設定なしでClaude Codeを使うには、tool利用後のMessages APIリクエストで、直前のassistant messageに含まれる署名付き`thinking` content blockを受理し、Anthropic APIへ透過または適切に変換する必要がある。
+2026-08-31にthinking無効化設定を削除し、[PR #21](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/pull/21)で再検証した。
 
-`tool_result`の追加対応が必要なのではない。thinkingなしの対照実験で、`tool_result`を含む2回目のリクエストが既にHTTP 200になっているためである。
+最初の[run 33366429216](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/33366429216)は、Claudeの処理自体は`is_error: false`で完了していたが、12ターンに対して`--max-turns 10`だったためActionが失敗扱いになった。HTTP 400は発生していない。上限を15へ変更した[run 33366681419](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/actions/runs/33366681419)は54秒で成功した。
+
+サニタイズ済みログでは、thinking本文を公開せず、content blockの種類と件数だけを記録した。
+
+```json
+{
+  "assistant_content_types": ["text", "thinking", "tool_use"],
+  "thinking_block_count": 1,
+  "tool_result_count": 5,
+  "tool_uses": [
+    {"name": "Bash", "command": "gh pr view 21"},
+    {"name": "Bash", "command": "gh pr diff 21"},
+    {"name": "mcp__github_comment__update_claude_comment", "command": ""}
+  ],
+  "result": {
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 6,
+    "total_cost_usd": 0.048063299999999996
+  }
+}
+```
+
+Action本体の結果には`permission_denials_count: 0`も記録された。Claudeは`gh pr view`と`gh pr diff`でPRを調査し、[PR #21のレビューコメント](https://github.com/yukyu30/lolipop-ai-gateway-demo-actions/pull/21#issuecomment-5474914697)を投稿した。
+
+この結果から、2026-08-31時点のAIゲートウェイは、Claude Codeがtool利用後に再送する署名付き`thinking` content blockを受理できることを確認した。
+
+## thinking block対応の経緯
+
+2026-08-27時点では、回避設定なしでClaude Codeを使うために、tool利用後のMessages APIリクエストで署名付き`thinking` content blockを受理する対応が必要だった。
+
+当時から`tool_result`自体はthinkingなしの対照実験でHTTP 200になっていた。2026-08-31の再検証ではthinkingを含む往復も成功したため、現在のworkflowではthinking無効化の回避設定を削除している。
 
 ## 参考資料
 
