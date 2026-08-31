@@ -20,4 +20,5 @@ Claude Codeのthinkingを有効にしたまま、PR情報を取得するツー�
 
 ## 検証メモ
 
+- [Claude Code Actionをthinking有効で使う設定](docs/claude-code-action-thinking-setup.md)
 - [Claude Code Action × Lolipop AI Gateway: tool利用検証メモ](docs/claude-code-action-tool-use.md)
