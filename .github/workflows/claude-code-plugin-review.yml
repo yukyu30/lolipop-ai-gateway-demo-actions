@@ -1,0 +1,33 @@
+name: Claude Code Plugin Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to review
+        required: true
+        type: string
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_BASE_URL: https://ai-gateway.lolipop.jp/anthropic
+    permissions:
+      contents: read
+      pull-requests: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run code-review plugin
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
+          plugin_marketplaces: https://github.com/anthropics/claude-plugins-official.git
+          plugins: code-review@claude-plugins-official
+          prompt: /code-review:code-review ${{ github.repository }}/pull/${{ inputs.pr_number }}
+          claude_args: --model anthropic/claude-haiku-4-5
