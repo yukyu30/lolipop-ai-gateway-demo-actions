@@ -27,6 +27,12 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
+          settings: |
+            {
+              "env": {
+                "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "2048"
+              }
+            }
           plugin_marketplaces: https://github.com/anthropics/claude-plugins-official.git
           plugins: code-review@claude-plugins-official
           prompt: /code-review:code-review ${{ github.repository }}/pull/${{ inputs.pr_number }}
