@@ -30,4 +30,4 @@ jobs:
           plugin_marketplaces: https://github.com/anthropics/claude-plugins-official.git
           plugins: code-review@claude-plugins-official
           prompt: /code-review:code-review ${{ github.repository }}/pull/${{ inputs.pr_number }}
-          claude_args: --model anthropic/claude-haiku-4-5
+          claude_args: --model anthropic/claude-haiku-4-5 --max-turns 50
