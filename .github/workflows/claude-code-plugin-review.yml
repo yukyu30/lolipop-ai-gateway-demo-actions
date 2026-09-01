@@ -41,6 +41,21 @@ jobs:
           echo "API probe HTTP status: $http_status"
           if [[ "$http_status" != "200" ]]; then
             jq --raw-output '"API probe error type: " + (.error.type // "unknown")' "$response_file"
+            if jq --exit-status '.error.message | ascii_downcase | contains("budget")' "$response_file" > /dev/null; then
+              echo "API probe message category: budget"
+            elif jq --exit-status '.error.message | ascii_downcase | contains("model")' "$response_file" > /dev/null; then
+              echo "API probe message category: model"
+            elif jq --exit-status '.error.message | ascii_downcase | contains("account")' "$response_file" > /dev/null; then
+              echo "API probe message category: account"
+            elif jq --exit-status '.error.message | ascii_downcase | contains("project")' "$response_file" > /dev/null; then
+              echo "API probe message category: project"
+            elif jq --exit-status '.error.message | ascii_downcase | contains("provider")' "$response_file" > /dev/null; then
+              echo "API probe message category: provider"
+            elif jq --exit-status '.error.message | ascii_downcase | contains("auto")' "$response_file" > /dev/null; then
+              echo "API probe message category: auto"
+            else
+              echo "API probe message category: unclassified"
+            fi
             exit 1
           fi
 
