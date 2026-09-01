@@ -13,7 +13,7 @@ jobs:
       ANTHROPIC_BASE_URL: https://ai-gateway.lolipop.jp/anthropic
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       id-token: write
 
     steps:
@@ -43,6 +43,8 @@ jobs:
             - Documentation
 
             Provide detailed feedback and suggestions for improvement.
+            Post the final review as a single pull request comment with `gh pr comment`.
+            Post the comment even when no issues are found.
 
           claude_args: |
             --model anthropic/claude-haiku-4-5
