@@ -52,6 +52,24 @@ jobs:
             echo "Failure category: unsupported Anthropic content block"
           elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | contains("max turns")' "$EXECUTION_FILE" > /dev/null; then
             echo "Failure category: max turns"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | length == 0' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: empty result"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | test("(^|[^0-9])400([^0-9]|$)")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: HTTP 400"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | test("(^|[^0-9])401([^0-9]|$)")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: HTTP 401"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | test("(^|[^0-9])402([^0-9]|$)")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: HTTP 402"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | test("(^|[^0-9])403([^0-9]|$)")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: HTTP 403"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | test("(^|[^0-9])429([^0-9]|$)")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: HTTP 429"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | test("(^|[^0-9])5[0-9]{2}([^0-9]|$)")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: HTTP 5xx"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | ascii_downcase | contains("rate limit")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: rate limit"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | ascii_downcase | contains("model")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: model"
           else
             echo "Failure category: unclassified"
           fi
