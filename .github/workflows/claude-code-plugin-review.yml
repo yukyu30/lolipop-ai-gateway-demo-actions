@@ -24,6 +24,7 @@ jobs:
           fetch-depth: 1
 
       - name: Run code-review plugin
+        id: plugin-review
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
@@ -37,3 +38,20 @@ jobs:
           plugins: code-review@claude-plugins-official
           prompt: /code-review:code-review ${{ github.repository }}/pull/${{ inputs.pr_number }}
           claude_args: --model anthropic/claude-haiku-4-5 --max-turns 50
+
+      - name: Classify API failure
+        if: failure()
+        env:
+          EXECUTION_FILE: ${{ steps.plugin-review.outputs.execution_file }}
+        run: |
+          if [[ -z "$EXECUTION_FILE" || ! -f "$EXECUTION_FILE" ]]; then
+            echo "Failure category: execution file unavailable"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | contains("Insufficient balance")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: insufficient balance"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | contains("Unsupported Anthropic content block")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: unsupported Anthropic content block"
+          elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | contains("max turns")' "$EXECUTION_FILE" > /dev/null; then
+            echo "Failure category: max turns"
+          else
+            echo "Failure category: unclassified"
+          fi
