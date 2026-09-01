@@ -37,24 +37,4 @@ jobs:
           plugin_marketplaces: https://github.com/anthropics/claude-plugins-official.git
           plugins: code-review@claude-plugins-official
           prompt: /code-review:code-review ${{ github.repository }}/pull/${{ inputs.pr_number }}
-          claude_args: --model anthropic/claude-haiku-4-5 --max-turns 50
-
-      - name: Print tool names used by the plugin
-        if: always()
-        env:
-          EXECUTION_FILE: ${{ steps.plugin-review.outputs.execution_file }}
-        run: |
-          if [[ -z "$EXECUTION_FILE" || ! -f "$EXECUTION_FILE" ]]; then
-            echo "Claude execution output file was not found"
-            exit 0
-          fi
-
-          jq --compact-output '
-            [
-              .[]
-              | select(.type == "assistant")
-              | .message.content[]?
-              | select(.type == "tool_use")
-              | .name
-            ] | unique
-          ' "$EXECUTION_FILE"
+          claude_args: --model anthropic/claude-haiku-4-5 --max-turns 15
