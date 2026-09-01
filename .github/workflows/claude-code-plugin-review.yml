@@ -61,7 +61,21 @@ jobs:
           elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | test("(^|[^0-9])402([^0-9]|$)")' "$EXECUTION_FILE" > /dev/null; then
             echo "Failure category: HTTP 402"
           elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | test("(^|[^0-9])403([^0-9]|$)")' "$EXECUTION_FILE" > /dev/null; then
-            echo "Failure category: HTTP 403"
+            if jq --exit-status '[.[] | select(.type == "result") | .result] | last | contains("account_inactive")' "$EXECUTION_FILE" > /dev/null; then
+              echo "Failure category: account_inactive"
+            elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | contains("project_inactive")' "$EXECUTION_FILE" > /dev/null; then
+              echo "Failure category: project_inactive"
+            elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | contains("budget_guardrail_exceeded")' "$EXECUTION_FILE" > /dev/null; then
+              echo "Failure category: budget_guardrail_exceeded"
+            elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | contains("model_not_allowed")' "$EXECUTION_FILE" > /dev/null; then
+              echo "Failure category: model_not_allowed"
+            elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | contains("auto_required")' "$EXECUTION_FILE" > /dev/null; then
+              echo "Failure category: auto_required"
+            elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | contains("permission_denied")' "$EXECUTION_FILE" > /dev/null; then
+              echo "Failure category: permission_denied"
+            else
+              echo "Failure category: HTTP 403"
+            fi
           elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | test("(^|[^0-9])429([^0-9]|$)")' "$EXECUTION_FILE" > /dev/null; then
             echo "Failure category: HTTP 429"
           elif jq --exit-status '[.[] | select(.type == "result") | .result] | last | test("(^|[^0-9])5[0-9]{2}([^0-9]|$)")' "$EXECUTION_FILE" > /dev/null; then
