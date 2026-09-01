@@ -24,7 +24,6 @@ jobs:
           fetch-depth: 1
 
       - name: Run code-review plugin
-        id: plugin-review
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.AI_GATEWAY_API_KEY }}
