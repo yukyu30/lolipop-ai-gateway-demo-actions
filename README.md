@@ -14,7 +14,7 @@ Pull Requestを作成すると、Claude Code Actionによるコードレビュ�
 
 ガードレールの動作確認には、ダミーのメールアドレス `ugo@example.com` を使用します。
 
-レビューworkflowは、Claude Code Action公式のcomprehensive PR review例をもとに、Haikuモデルで軽量に実行します。
+レビューworkflowは、Claude Code Action公式のfiltered authors例をもとに、Haikuモデルで実行します。
 
 Claude Codeのthinkingを有効にしたまま、PR情報を取得するツール往復を実行します。
 
